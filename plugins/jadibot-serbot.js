@@ -17,7 +17,6 @@ function findSubByJid(jid) {
   return global.conns.find(c => c?.user?.jid === jid)
 }
 
-// Utility: conta subbot attivi
 function countActiveSubbots() {
   if (!global.conns) return 0
   return global.conns.filter(c => c?.ws?.socket && c.ws.socket.readyState === ws.OPEN && c.user).length

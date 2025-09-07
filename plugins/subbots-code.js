@@ -1,96 +1,74 @@
-import { DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion, makeCacheableSignalKeyStore, jidNormalizedUser } from '@whiskeysockets/baileys'
+import {
+  DisconnectReason,
+  useMultiFileAuthState,
+  fetchLatestBaileysVersion,
+  makeCacheableSignalKeyStore,
+} from '@whiskeysockets/baileys'
 import qrcode from 'qrcode'
 import fs from 'fs'
 import pino from 'pino'
-import crypto from 'crypto'
 import NodeCache from 'node-cache'
-import * as ws from 'ws'
 import { makeWASocket } from '../lib/simple.js'
 
-if (!(global.conns instanceof Array)) global.conns = []
+if (!global.conns) global.conns = []
 
-let handler = async (m, { conn, args, usedPrefix, command }) => {
-  let parentw = args[0] && args[0] == "plz" ? conn : await global.conn
+let handler = async (m, { conn, args }) => {
+  // cartella base
+  const baseFolder = './chatunitysub'
+  if (!fs.existsSync(baseFolder)) fs.mkdirSync(baseFolder, { recursive: true })
 
-  async function serbot() {
-    let serbotFolder = crypto.randomBytes(10).toString('hex').slice(0, 8)
-    let folderSub = `./varebot-sub/${serbotFolder}`
-    if (!fs.existsSync(folderSub)) {
-      fs.mkdirSync(folderSub, { recursive: true })
-    }
-    if (args[0]) {
-      fs.writeFileSync(`${folderSub}/creds.json`, Buffer.from(args[0], 'base64').toString('utf-8'))
-    }
+  let userId = m.sender.split('@')[0] // nome cartella = numero user
+  const userFolder = `${baseFolder}/${userId}`
+  if (!fs.existsSync(userFolder)) fs.mkdirSync(userFolder, { recursive: true })
 
-    const { state, saveCreds } = await useMultiFileAuthState(folderSub)
-    const msgRetryCounterCache = new NodeCache()
-    const { version } = await fetchLatestBaileysVersion()
+  const { state, saveCreds } = await useMultiFileAuthState(userFolder)
+  const { version } = await fetchLatestBaileysVersion()
+  const msgRetryCounterCache = new NodeCache()
 
-    const connectionOptions = {
-      logger: pino({ level: 'silent' }),
-      printQRInTerminal: true,
-      browser: ['Sub-Bot', 'Chrome', '2.0.0'],
-      auth: {
-        creds: state.creds,
-        keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }).child({ level: "fatal" })),
-      },
-      markOnlineOnConnect: true,
-      generateHighQualityLinkPreview: true,
-      getMessage: async (chiave) => {
-        let jid = jidNormalizedUser(chiave.remoteJid)
-        let msg = await store.loadMessage(jid, chiave.id)
-        return msg?.message || ""
-      },
-      msgRetryCounterCache,
-      version
-    }
-
-    let conn = makeWASocket(connectionOptions)
-    conn.isInit = false
-    let isInit = true
-
-    async function connectionUpdate(update) {
-      const { connection, lastDisconnect, isNewLogin, qr } = update
-      if (isNewLogin) conn.isInit = true
-
-      if (qr) {
-        let txt = '*S U B B O T*\n\n> Scansiona questo QR per collegarti come Sub-Bot\n\n1️⃣ Apri WhatsApp\n2️⃣ Vai su *Dispositivi Collegati*\n3️⃣ Scansiona il QR\n\n⚠️ Valido per 120 secondi'
-        let sendQR = await parentw.sendFile(m.chat, await qrcode.toDataURL(qr, { scale: 8 }), "qrcode.png", txt, m)
-        setTimeout(() => {
-          parentw.sendMessage(m.chat, { delete: sendQR.key })
-        }, 120000) // 120 secondi
-      }
-
-      const code = lastDisconnect?.error?.output?.statusCode || lastDisconnect?.error?.output?.payload?.statusCode
-      if (code && code !== DisconnectReason.loggedOut && conn?.ws.socket == null) {
-        let i = global.conns.indexOf(conn)
-        if (i >= 0) {
-          delete global.conns[i]
-          global.conns.splice(i, 1)
-        }
-        fs.rmdirSync(folderSub, { recursive: true })
-        if (code !== DisconnectReason.connectionClosed) {
-          await parentw.reply(m.chat, "❌ Connessione persa con il server.", m)
-        }
-      }
-
-      if (connection == "open") {
-        conn.isInit = true
-        global.conns.push(conn)
-        await parentw.reply(m.chat, '✅ Sub-bot creato con successo!', m)
-      }
-    }
-
-    conn.ev.on("connection.update", connectionUpdate)
-    conn.ev.on("creds.update", saveCreds)
+  const connectionOptions = {
+    logger: pino({ level: 'silent' }),
+    printQRInTerminal: false,
+    browser: ['ChatUnity SubBot', 'Chrome', '1.0.0'],
+    auth: {
+      creds: state.creds,
+      keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'silent' })),
+    },
+    msgRetryCounterCache,
+    version,
   }
 
-  serbot()
+  let subConn = makeWASocket(connectionOptions)
+
+  // genera QR
+  subConn.ev.on('connection.update', async (update) => {
+    const { connection, lastDisconnect, qr } = update
+    if (qr) {
+      let qrImage = await qrcode.toDataURL(qr, { scale: 8 })
+      await conn.sendMessage(m.chat, {
+        image: Buffer.from(qrImage.split(',')[1], 'base64'),
+        caption: `📲 Scansiona il QR per collegare il tuo SubBot\n\n⏳ Scade in 120 secondi!`,
+      }, { quoted: m })
+    }
+
+    if (connection === 'open') {
+      global.conns.push(subConn)
+      await conn.sendMessage(m.chat, {
+        text: `✅ Sub-bot collegato con successo!\nNumero: ${subConn.user.id.split('@')[0]}`,
+      }, { quoted: m })
+    }
+
+    if (connection === 'close') {
+      let reason = lastDisconnect?.error?.output?.statusCode
+      await conn.sendMessage(m.chat, {
+        text: `❌ Sub-bot disconnesso. Codice: ${reason || 'sconosciuto'}`,
+      }, { quoted: m })
+    }
+  })
+
+  subConn.ev.on('creds.update', saveCreds)
 }
 
-handler.command = ["jadibot", "qr", "serbot"]
+handler.command = ['serbot', 'qr']
+handler.help = ['serbot']
+handler.tags = ['tools']
 export default handler
-
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}

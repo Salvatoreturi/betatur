@@ -22,7 +22,6 @@ function countActiveSubbots() {
   return global.conns.filter(c => c?.ws?.socket && c.ws.socket.readyState === ws.OPEN && c.user).length
 }
 
-// -------------------- SERBOT (crea sub-bot via QR o cred) --------------------
 let serbotHandler = async (m, { conn: mainConn, args, usedPrefix, command }) => {
   const settings = (global.db?.data?.settings && global.db.data.settings[mainConn.user.jid]) || {}
   if (settings.jadibotmd === false) {
@@ -44,7 +43,6 @@ let serbotHandler = async (m, { conn: mainConn, args, usedPrefix, command }) => 
         // può essere una creds.json già serializzata
         fs.writeFileSync(`${folder}/creds.json`, decoded)
       } catch (err) {
-        // ignore
       }
     }
 

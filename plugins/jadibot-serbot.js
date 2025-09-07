@@ -98,7 +98,6 @@ let serbotHandler = async (m, { conn: mainConn, args, usedPrefix, command }) => 
 
       const code = lastDisconnect?.error?.output?.statusCode || lastDisconnect?.error?.output?.payload?.statusCode
       if (code && code !== DisconnectReason.loggedOut && (sub?.ws?.socket == null || sub?.ws?.socket?.readyState !== ws.OPEN)) {
-        // rimuovo dalle connessioni se presente
         const i = global.conns.indexOf(sub)
         if (i >= 0) {
           try { delete global.conns[i] } catch {}
@@ -111,7 +110,6 @@ let serbotHandler = async (m, { conn: mainConn, args, usedPrefix, command }) => 
 
       if (connection === 'open') {
         sub.isInit = true
-        // evita duplicati
         if (!global.conns.includes(sub)) global.conns.push(sub)
         try {
           await parent.sendMessage(m.chat, { text: `✅ Sub-bot creato con successo! Numero: ${sub.user?.id?.split?.('@')?.[0] || 'sconosciuto'}` }, { quoted: m })
@@ -123,7 +121,6 @@ let serbotHandler = async (m, { conn: mainConn, args, usedPrefix, command }) => 
       }
     }
 
-    // rimuovo conn e listeners se il sub non è più valido
     const cleanupInterval = setInterval(() => {
       try {
         if (!sub || !sub.user) {
@@ -174,7 +171,6 @@ let serbotHandler = async (m, { conn: mainConn, args, usedPrefix, command }) => 
 
 serbotHandler.command = ['serbot', 'qr', 'code']
 
-// -------------------- BYEBOT (disattiva conn attuale) --------------------
 let byebotHandler = async (m, { conn }) => {
   try {
     if (global.conn.user.jid === conn.user.jid) {
@@ -189,7 +185,6 @@ let byebotHandler = async (m, { conn }) => {
 }
 byebotHandler.command = ['byebot']
 
-// -------------------- BOTS (mostra sub-bots attivi) --------------------
 let botsHandler = async (m, { conn }) => {
   try {
     if (!global.conns || !Array.isArray(global.conns)) global.conns = []
@@ -208,14 +203,12 @@ let botsHandler = async (m, { conn }) => {
 }
 botsHandler.command = ['bots']
 
-// -------------------- DELETE SESSION (elimina sessione e disconnette) --------------------
 let deleteSessionHandler = async (m, { conn }) => {
   try {
     const who = (m.mentionedJid && m.mentionedJid[0]) ? m.mentionedJid[0] : m.fromMe ? conn.user.jid : m.sender
     const uniq = `${who.split('@')[0]}`
     const folder = `${SESSIONS_DIR}/${uniq}`
 
-    // chiudo eventuale bot collegato con questo jid
     if (global.conns && Array.isArray(global.conns)) {
       const bot = global.conns.find(c => c.user?.jid?.startsWith(uniq))
       if (bot) {
@@ -226,7 +219,6 @@ let deleteSessionHandler = async (m, { conn }) => {
       }
     }
 
-    // rimuovo la cartella sessione
     try {
       fs.rmSync(folder, { recursive: true, force: true })
       await conn.sendMessage(m.chat, { text: '✅ Sessione ChatUnityBot Sub eliminata con successo.' }, { quoted: m })
@@ -245,7 +237,6 @@ let deleteSessionHandler = async (m, { conn }) => {
 }
 deleteSessionHandler.command = ['deletesession', 'delsubbot', 'logout']
 
-// -------------------- SETPRIMARY (imposta bot primario in gruppo) --------------------
 let setPrimaryHandler = async (m, { conn, usedPrefix, args }) => {
   try {
     if (!args[0] && !m.quoted && !(m.mentionedJid && m.mentionedJid.length)) {

@@ -12,7 +12,6 @@ if (!fs.existsSync(SESSIONS_DIR)) fs.mkdirSync(SESSIONS_DIR, { recursive: true }
 
 if (!global.conns || !Array.isArray(global.conns)) global.conns = []
 
-// Utility: trova bot attivo da jid semplice o da mention
 function findSubByJid(jid) {
   if (!global.conns) return null
   return global.conns.find(c => c?.user?.jid === jid)

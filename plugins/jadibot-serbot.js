@@ -294,6 +294,5 @@ setPrimaryHandler.command = ['setprimary']
 setPrimaryHandler.group = true
 setPrimaryHandler.admin = true
 
-// -------------------- EXPORTS --------------------
 export default serbotHandler
 export { byebotHandler as byebot, botsHandler as bots, deleteSessionHandler as deletesession, setPrimaryHandler as setprimary }

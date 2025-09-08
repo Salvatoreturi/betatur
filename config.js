@@ -50,10 +50,6 @@ global.APIKeys = {
 }
 
 
-global.imagen1 = ['./media/menu1.jpg']
-global.imagen4 = fs.readFileSync('./chatunity.png')
-
-
 global.packname = '𝐂𝐡𝐚𝐭𝐔𝐧𝐢𝐭𝐲-𝐁𝐨𝐭'
 global.author = '𝐌𝐝'
 

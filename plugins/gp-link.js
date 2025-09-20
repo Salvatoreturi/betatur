@@ -1,4 +1,4 @@
-const handler = async (m, { conn, args, usedPrefix }) => {
+const handler = async (m, { conn, args }) => {
     const metadata = await conn.groupMetadata(m.chat)
     
     await conn.sendMessage(m.chat, {
@@ -15,4 +15,5 @@ handler.tags = ['group']
 handler.command = /^link(gro?up)?$/i
 handler.group = true
 handler.botAdmin = true
+
 export default handler
